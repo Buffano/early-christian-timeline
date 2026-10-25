@@ -1,1 +1,294 @@
-$(cat /tmp/fixed_index.html)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Early Christian Events: Interactive Timeline</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  body { font-family: Georgia, serif; background: #faf8f5; margin: 0; color: #1a1a2e; }
+  header { text-align: center; padding: 2rem 1rem; background: white; border-bottom: 3px solid #c9a227; }
+  header h1 { margin: 0.5rem 0; font-size: 2.4rem; color: #1a1a2e; }
+  .chi-rho { font-size: 3rem; color: #c9a227; }
+  .quote { font-style: italic; color: #555; margin: 0.5rem 0; }
+  .controls { padding: 1rem; background: #f0ebe3; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; justify-content: center; }
+  input[type="search"] { padding: 0.6rem 1rem; width: 280px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+  button { padding: 0.6rem 1rem; background: #1a1a2e; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  #map { height: 400px; margin: 1rem; border-radius: 8px; border: 1px solid #ddd; }
+  .timeline { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; position: relative; }
+  .timeline::before { content: ''; position: absolute; left: 30px; top: 0; bottom: 0; width: 4px; background: #34495e; }
+  .event { margin: 1.5rem 0; padding-left: 70px; position: relative; display: none; }
+  .event.visible { display: block; }
+  .event .dot { position: absolute; left: 18px; top: 8px; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 2px #34495e; }
+  .event h3 { margin: 0 0 0.3rem; }
+  .event .year { font-weight: bold; color: #c9a227; }
+  .event .desc { margin: 0.4rem 0; color: #444; }
+  .event .ref { font-size: 0.85rem; color: #666; font-style: italic; cursor: pointer; text-decoration: underline; }
+  .event .ref:hover { color: #c9a227; }
+  .event .verse-text { display: none; margin-top: 0.5rem; padding: 0.8rem; background: #f9f6f0; border-left: 3px solid #c9a227; font-size: 0.9rem; }
+  .event.verse-open .verse-text { display: block; }
+  .event a { color: #2980b9; text-decoration: none; }
+  .event a:hover { text-decoration: underline; }
+  .event .dot { cursor: pointer; }
+  .event img { max-width: 100%; height: auto; border-radius: 6px; margin-top: 0.8rem; display: none; }
+  .event.expanded img { display: block; }
+  .solas { text-align: center; padding: 2rem; background: #1a1a2e; color: #c9a227; font-size: 1.1rem; }
+  .zoom-controls { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; }
+  .zoom-controls button { width: 40px; height: 40px; font-size: 1.4rem; }
+</style>
+</head>
+<body>
+<header>
+  <div class="chi-rho">☧</div>
+  <h1>EARLY CHRISTIAN EVENTS</h1>
+  <p>FIRST CENTURY AD</p>
+  <p class="quote">“I am with you always, to the end of the age.” — Matthew 28:20</p>
+  <div style="margin:1.5rem auto; max-width:960px;">
+    <h2 style="text-align:center; font-size:1.4rem; margin-bottom:0.5rem;">Paul’s Journey Videos</h2>
+    <div style="display:flex; flex-wrap:wrap; gap:1.5rem; justify-content:center;">
+      <div style="flex:1 1 420px; max-width:480px;">
+        <video controls style="width:100%; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+          <source src="videos/paul_timeline_16x9.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <p style="text-align:center; margin-top:0.4rem; font-size:0.9rem;"><strong>Timeline Overview</strong><br>
+          <a href="videos/paul_timeline_16x9.mp4" download style="color:#c9a227;">Download</a>
+        </p>
+      </div>
+      <div style="flex:1 1 420px; max-width:480px;">
+        <video controls style="width:100%; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+          <source src="videos/Pauls_Journeys_Horizontal_v3.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <p style="text-align:center; margin-top:0.4rem; font-size:0.9rem;"><strong>Missionary Journeys Map</strong><br>
+          <a href="videos/Pauls_Journeys_Horizontal_v3.mp4" download style="color:#c9a227;">Download</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <input type="search" id="search" placeholder="Search events, places, or years..." />
+  <button onclick="resetFilter()">Show All</button>
+</div>
+
+<div id="map"></div>
+
+<div class="timeline" id="timeline"></div>
+
+<div class="solas">Sola Scriptura · Sola Fide · Sola Gratia · Solus Christus · Soli Deo Gloria</div>
+<p style="text-align:center; font-style:italic; padding:1rem;">“Remember the days of old; consider the generations long past.” — Deuteronomy 32:7</p>
+
+<div class="zoom-controls">
+  <button onclick="zoom(1.1)">+</button>
+  <button onclick="zoom(0.9)">−</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const events = [
+  { year: "5 BC", title: "Jesus born in Bethlehem", desc: "Birth of Jesus in Bethlehem of Judea during the reign of Herod the Great.", ref: "Matt 2; Luke 2", lat: 31.7054, lng: 35.2024, historical: "Bethlehem of Judea", modern: "Bethlehem, West Bank", note: "Birthplace of Jesus.", color: "#c9a227" },
+  { year: "4 BC", title: "Flight to Egypt; Herod dies; Sepphoris destroyed", desc: "Family flees to Egypt; Herod dies; Judas of Sepphoris leads rebellion; Roman forces under Varus destroy Sepphoris; territories divided among Herod’s sons.", ref: "Matt 2:13–23", lat: 32.6996, lng: 35.3035, historical: "Nazareth", modern: "Nazareth, Israel", note: "Hometown of Jesus; where he grew up and worked as a carpenter.", color: "#e67e22" },
+  { year: "AD 6", title: "Judea becomes Roman province; Judas the Galilean revolt", desc: "Archelaus exiled for incompetence; Judea, Samaria, and Idumea become a Roman province; Judas the Galilean leads revolt against the tax census; Quirinius appoints Annas high priest.", ref: "Acts 5:37", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#2980b9" },
+  { year: "AD 8", title: "Jesus at age 12 in the Temple", desc: "Jesus interacts with the teachers in the temple and amazes them with his understanding.", ref: "Luke 2:41–50", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#8e44ad" },
+  { year: "AD 8–28/30", title: "Jesus works as a carpenter in Nazareth", desc: "Jesus works as a carpenter in Nazareth and neighboring villages, including the rebuilding Sepphoris.", ref: "Matt 13:55; Mark 6:3", lat: 32.6996, lng: 35.3035, historical: "Nazareth", modern: "Nazareth, Israel", note: "Hometown of Jesus; where he grew up and worked as a carpenter.", color: "#7f8c8d" },
+  { year: "AD 28–29", title: "John the Baptist begins ministry", desc: "John the Baptist begins his ministry around the Jordan River.", ref: "Mark 1:4; Luke 3:1–3; John 1:19", lat: 31.8, lng: 35.5, historical: "Jordan River region", modern: "Jordan River / Qasr al-Yahud area", color: "#27ae60" },
+  { year: "AD 28–30", title: "Jesus begins public ministry", desc: "Jesus begins his ministry in Judea, then focuses his efforts in Galilee. Pharisees (including Gamaliel) train disciples; Philo active in Alexandria.", ref: "Mark 1:14–15", lat: 32.6996, lng: 35.3035, historical: "Nazareth", modern: "Nazareth, Israel", note: "Hometown of Jesus; where he grew up and worked as a carpenter.", color: "#16a085" },
+  { year: "AD 33 (or 30)", title: "Crucifixion, Resurrection, Ascension, Pentecost", desc: "Jesus crucified and resurrected; James the brother of Jesus becomes a believer; Jesus ascends; Holy Spirit given at Pentecost; gospel proclaimed in Jerusalem.", ref: "Acts 1–2; 1 Cor 15:7", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#c0392b" },
+  { year: "AD 33/34", title: "Paul’s conversion on the Damascus road", desc: "Paul witnesses the risen Lord on the way to Damascus and is commissioned as an apostle to the nations.", ref: "Acts 9; Gal 1:15–16", lat: 33.5138, lng: 36.2765, historical: "Damascus", modern: "Damascus, Syria", note: "Site of Paul’s conversion on the road to Damascus.", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Ancient_City_of_Damascus-107612.jpg/800px-Ancient_City_of_Damascus-107612.jpg", color: "#2c3e50" },
+  { year: "AD 34–37", title: "Paul ministers in Damascus and Arabia", desc: "Paul ministers in Damascus and Arabia.", ref: "Acts 9:19–22; Gal 1:16–18", lat: 33.5138, lng: 36.2765, historical: "Damascus", modern: "Damascus, Syria", note: "Site of Paul’s conversion on the road to Damascus.", color: "#16a085" },
+  { year: "AD 36", title: "Pilate loses his position", desc: "Pontius Pilate is removed from office for incompetence.", ref: "", lat: 32.5, lng: 34.9, historical: "Caesarea Maritima", modern: "Caesarea, Israel", note: "Paul imprisoned here before appearing before Festus and Agrippa II.", color: "#7f8c8d" },
+  { year: "AD 36/37", title: "Paul meets Peter in Jerusalem", desc: "Paul visits Peter in Jerusalem for fifteen days.", ref: "Acts 9:26–30; Gal 1:18", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#2980b9" },
+  { year: "AD 37–45", title: "Paul ministers in Syria, Tarsus, and Cilicia", desc: "Paul ministers in Syria, Tarsus, and Cilicia.", ref: "Acts 9:30; Gal 1:21", lat: 36.9, lng: 34.9, historical: "Tarsus", modern: "Tarsus, Turkey", note: "Paul’s hometown.", color: "#8e44ad" },
+  { year: "AD 38", title: "Peter witnesses to Cornelius", desc: "Peter preaches to the Gentile Cornelius and his household; they receive the Holy Spirit.", ref: "Acts 10", lat: 32.5, lng: 34.9, historical: "Caesarea Maritima", modern: "Caesarea, Israel", note: "Paul imprisoned here before appearing before Festus and Agrippa II.", color: "#27ae60" },
+  { year: "AD 39", title: "Antipas exiled", desc: "Herod Antipas is exiled by the Romans.", ref: "", lat: 32.6996, lng: 35.3035, historical: "Galilee", modern: "Galilee, Israel", color: "#7f8c8d" },
+  { year: "AD 40–45", title: "James writes his letter", desc: "James writes his letter to believers outside Palestine.", ref: "James 1:1", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#c9a227" },
+  { year: "AD 41–44", title: "Agrippa rules Palestine; kills James; imprisons Peter", desc: "Agrippa I rules Palestine; he kills James the brother of John and imprisons Peter.", ref: "Acts 12:1–3", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#c0392b" },
+  { year: "AD 42–44", title: "Paul receives his thorn in the flesh", desc: "Paul receives his “thorn in the flesh.”", ref: "2 Cor 12:7", lat: 36.9, lng: 34.9, historical: "Tarsus / Cilicia", modern: "Tarsus, Turkey", color: "#7f8c8d" },
+  { year: "AD 44", title: "Peter leaves Jerusalem; Agrippa dies", desc: "Peter leaves Jerusalem; Agrippa is killed by an angel of the Lord.", ref: "Acts 12:17, 23", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#e67e22" },
+  { year: "AD 44–46", title: "Theudas revolt", desc: "Theudas persuades many Jews to follow him; Roman procurator Fadus beheads him.", ref: "", lat: 31.8, lng: 35.5, historical: "Jordan River region", modern: "Jordan River", color: "#7f8c8d" },
+  { year: "AD 44–47", title: "Paul’s second visit to Jerusalem; famine", desc: "Paul’s second visit to Jerusalem during a time of famine.", ref: "Acts 11:27–30; Gal 2:1–10", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#2980b9" },
+  { year: "AD 46–47", title: "Paul’s First Missionary Journey", desc: "Paul’s First Missionary Journey with Barnabas from Antioch to Cyprus, Antioch in Pisidia, Iconium, and Lystra.", ref: "Acts 13:4–14:26", lat: 36.2, lng: 36.15, historical: "Antioch of Syria", modern: "Antakya, Turkey", note: "Launching point for Paul’s missionary journeys.", color: "#16a085" },
+  { year: "AD 46–48", title: "Sons of Judas the Galilean crucified", desc: "Roman procurator Tiberius Alexander crucifies two sons of Judas the Galilean.", ref: "", lat: 31.7683, lng: 35.2137, historical: "Jerusalem", modern: "Jerusalem", color: "#7f8c8d" },
+  { year: "AD 48", title: "Paul writes Galatians", desc: "Paul writes Galatians, perhaps from Antioch.", ref: "Galatians", lat: 36.2, lng: 36.15, historical: "Antioch of Syria", modern: "Antakya, Turkey", note: "Launching point for Paul’s missionary journeys.", color: "#c9a227" },
+  { year: "AD 48–49", title: "Apostolic Council in Jerusalem", desc: "Paul and Peter return to Jerusalem for the Apostolic Council; Gentile believers freed from circumcision requirement; Paul and Barnabas split over John Mark.", ref: "Acts 15:1–29", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#2980b9" },
+  { year: "AD 48/49–51", title: "Paul’s Second Missionary Journey", desc: "Paul’s Second Missionary Journey with Silas from Antioch to Syria, Cilicia, southern Galatia, Macedonia (Philippi, Thessalonica, Berea), and Achaia (Athens, Corinth).", ref: "Acts 15:36–18:22", lat: 40.75, lng: 23.0, historical: "Macedonia / Philippi", modern: "Philippi, Greece", note: "Site of Paul’s first European church.", color: "#8e44ad" },
+  { year: "AD 49", title: "Claudius expels Jews from Rome", desc: "Claudius expels Jews from Rome because of conflicts about Jesus; Paul meets Priscilla and Aquila in Corinth.", ref: "Acts 18:2", lat: 37.9838, lng: 23.7275, historical: "Corinth", modern: "Corinth, Greece", note: "Paul wrote 1–2 Thessalonians and Romans here; appeared before Gallio.", color: "#e67e22" },
+  { year: "AD 49–51", title: "Paul writes 1–2 Thessalonians", desc: "Paul writes 1–2 Thessalonians from Corinth.", ref: "1 Thess 1:8", lat: 37.9838, lng: 23.7275, historical: "Corinth", modern: "Corinth, Greece", note: "Paul wrote 1–2 Thessalonians and Romans here; appeared before Gallio.", color: "#c9a227" },
+  { year: "AD 51", title: "Paul appears before Gallio", desc: "Paul appears before Gallio, proconsul of Achaia.", ref: "Acts 18:12–17", lat: 37.9838, lng: 23.7275, historical: "Corinth", modern: "Corinth, Greece", note: "Paul wrote 1–2 Thessalonians and Romans here; appeared before Gallio.", color: "#16a085" },
+  { year: "AD 50–54", title: "Peter comes to Rome", desc: "Peter comes to Rome.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#2980b9" },
+  { year: "AD 52–57", title: "Paul’s Third Missionary Journey", desc: "Paul’s Third Missionary Journey from Antioch to Galatia, Phrygia, Ephesus, Macedonia, and Greece.", ref: "Acts 18:23–21:17", lat: 37.9411, lng: 27.3419, historical: "Ephesus", modern: "Selçuk, Turkey", note: "Major center of Paul’s ministry; site of the Temple of Artemis.", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Ephesus_Library_of_Celsus.jpg/800px-Ephesus_Library_of_Celsus.jpg", color: "#27ae60" },
+  { year: "AD 52–55", title: "Paul ministers in Ephesus", desc: "Paul ministers in Ephesus for over two years.", ref: "Acts 19:1–20", lat: 37.9411, lng: 27.3419, historical: "Ephesus", modern: "Selçuk, Turkey", note: "Major center of Paul’s ministry; site of the Temple of Artemis.", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Ephesus_Library_of_Celsus.jpg/800px-Ephesus_Library_of_Celsus.jpg", color: "#16a085" },
+  { year: "AD 53–55", title: "Mark writes his Gospel; Paul writes 1 Corinthians", desc: "Mark writes his Gospel (containing Peter’s memories); Paul writes 1 Corinthians from Ephesus.", ref: "1 Cor", lat: 37.9411, lng: 27.3419, historical: "Ephesus", modern: "Selçuk, Turkey", note: "Major center of Paul’s ministry; site of the Temple of Artemis.", color: "#c9a227" },
+  { year: "AD 54", title: "Claudius dies; Priscilla and Aquila return to Rome", desc: "Claudius dies; the edict exiling Jews is repealed; Priscilla and Aquila return to Rome and host a church.", ref: "Rom 16:3–5", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#7f8c8d" },
+  { year: "AD 54–68", title: "Nero reigns", desc: "Nero becomes emperor.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#7f8c8d" },
+  { year: "AD 55–56", title: "Paul writes 2 Corinthians", desc: "Paul writes 2 Corinthians from Macedonia.", ref: "2 Cor", lat: 40.75, lng: 23.0, historical: "Macedonia", modern: "Macedonia, Greece", color: "#c9a227" },
+  { year: "AD 57", title: "Paul writes Romans; arrested in Jerusalem", desc: "Paul winters in Corinth and writes Romans; travels to Jerusalem, visits James, and is arrested.", ref: "Rom 16:1–2; Acts 21:17–36", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#c0392b" },
+  { year: "AD 57–59", title: "Paul imprisoned in Caesarea", desc: "Paul is imprisoned and transferred to Caesarea.", ref: "Acts 23:23–34", lat: 32.5, lng: 34.9, historical: "Caesarea Maritima", modern: "Caesarea, Israel", note: "Paul imprisoned here before appearing before Festus and Agrippa II.", color: "#e67e22" },
+  { year: "AD 60", title: "Paul voyages to Rome; shipwrecked on Malta", desc: "Paul begins voyage to Rome; shipwrecked for three months on Malta.", ref: "Acts 27–28", lat: 35.9375, lng: 14.3754, historical: "Malta", modern: "Malta", note: "Paul shipwrecked here on the way to Rome.", color: "#2980b9" },
+  { year: "AD 60–70", title: "Letter to the Hebrews written", desc: "The Letter to the Hebrews is written.", ref: "Hebrews", lat: 31.7683, lng: 35.2137, historical: "Jerusalem?", modern: "Jerusalem", color: "#c9a227" },
+  { year: "AD 62", title: "James the brother of the Lord executed", desc: "James the brother of the Lord is executed by the Sadducean high priest Ananus.", ref: "", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#c0392b" },
+  { year: "AD 62–63", title: "Peter writes 1 Peter", desc: "Peter writes his first letter from Rome.", ref: "1 Pet 5:13", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#c9a227" },
+  { year: "AD 62", title: "Paul arrives in Rome under house arrest; writes Prison Epistles", desc: "Paul arrives in Rome and remains under house arrest; he writes Ephesians, Philippians, Colossians, and Philemon. Luke writes Luke and Acts.", ref: "Acts 28:16–31; Eph; Phil; Col; Philem", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#2c3e50" },
+  { year: "AD 62–64", title: "Paul released; extends mission; writes Pastoral Epistles", desc: "Paul is released, extends his mission (probably reaching Spain), writes 1 Timothy from Macedonia and Titus from Nicopolis; he is rearrested in Rome.", ref: "1 Tim 1:3; Titus 3:12; 2 Tim 1:16–17", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#16a085" },
+  { year: "AD 63–64", title: "Temple complex completed", desc: "Work on the temple complex is completed.", ref: "", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#7f8c8d" },
+  { year: "AD 64 (July 19)", title: "Fire in Rome; Nero blames Christians", desc: "Fire in Rome; Nero blames and kills many Christians.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#c0392b" },
+  { year: "AD 64–67", title: "Peter writes 2 Peter; Jude writes; Paul writes 2 Timothy; martyrs", desc: "Peter writes his second letter; Jude writes his letter; Paul writes 2 Timothy; Paul and Peter are martyred in Rome.", ref: "2 Pet; Jude; 2 Tim 4:6–8", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#c0392b" },
+  { year: "AD 66", title: "First Jewish-Roman War begins", desc: "First Jewish-Roman War begins with a riot at Caesarea; Menahem seizes the temple; Nero dispatches Vespasian.", ref: "", lat: 32.5, lng: 34.9, historical: "Caesarea Maritima", modern: "Caesarea, Israel", note: "Paul imprisoned here before appearing before Festus and Agrippa II.", color: "#e67e22" },
+  { year: "AD 67", title: "Qumran destroyed; church flees to Pella; John to Ephesus", desc: "Romans destroy the Qumran community; the church in Jerusalem flees to Pella; John migrates to Ephesus with Mary.", ref: "Matt 24:15–16", lat: 31.7414, lng: 35.4594, historical: "Qumran", modern: "Qumran, West Bank", note: "Site where the Dead Sea Scrolls were hidden.", color: "#8e44ad" },
+  { year: "AD 68", title: "Nero commits suicide", desc: "Nero commits suicide; year of the three emperors.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#7f8c8d" },
+  { year: "AD 69", title: "Rebellion quelled; Vespasian becomes emperor", desc: "Rebellion quelled in Galilee and Samaria; Vespasian summoned back to Rome to become emperor.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#7f8c8d" },
+  { year: "AD 70 (Aug 30)", title: "Temple destroyed by Titus", desc: "Titus destroys the temple after a five-month siege; menorah, Torah, and veil removed; Sadducees’ influence ends; Johanan ben Zakkai settles in Jamnia.", ref: "", lat: 31.7683, lng: 35.2137, historical: "Jerusalem / Hierosolyma", modern: "Jerusalem", note: "Center of Jesus’ final days, Pentecost, the Apostolic Council, and James’ leadership.", color: "#c0392b" },
+  { year: "AD 73", title: "Masada falls", desc: "Before Roman general Silva breaches Masada, 936 Jewish rebels commit suicide.", ref: "", lat: 31.3156, lng: 35.3536, historical: "Masada", modern: "Masada, Israel", note: "Site of the final Jewish resistance in the First Jewish-Roman War.", color: "#e67e22" },
+  { year: "AD 75", title: "Titus and Berenice", desc: "Titus has an affair with the Jewish princess Berenice.", ref: "Acts 25:13", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#7f8c8d" },
+  { year: "AD 77", title: "Pliny the Elder writes Natural History", desc: "Pliny the Elder writes Natural History.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#7f8c8d" },
+  { year: "AD 77–78", title: "Josephus publishes Jewish War", desc: "Josephus publishes Jewish War in Rome.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#2980b9" },
+  { year: "AD 79", title: "Eruption of Vesuvius", desc: "Pompeii and Herculaneum are destroyed by the eruption of Vesuvius; Pliny the Elder dies.", ref: "", lat: 40.8214, lng: 14.4260, historical: "Pompeii", modern: "Pompeii, Italy", note: "Destroyed by Vesuvius in AD 79.", color: "#e67e22" },
+  { year: "AD 81", title: "Arch of Titus erected", desc: "The Arch of Titus, celebrating his destruction of the temple, is erected in Rome.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#7f8c8d" },
+  { year: "AD 81–96", title: "Domitian persecutes Christians", desc: "Domitian persecutes Christians among the Roman nobility, including his own relatives Clemens and Domitilla.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#c0392b" },
+  { year: "AD 85–95", title: "John writes his letters", desc: "John writes his letters (1–3 John), probably in Ephesus.", ref: "1–3 John", lat: 37.9411, lng: 27.3419, historical: "Ephesus", modern: "Selçuk, Turkey", note: "Major center of Paul’s ministry; site of the Temple of Artemis.", color: "#c9a227" },
+  { year: "AD 89–95", title: "John writes his Gospel", desc: "John writes his Gospel, probably in Ephesus.", ref: "John", lat: 37.9411, lng: 27.3419, historical: "Ephesus", modern: "Selçuk, Turkey", note: "Major center of Paul’s ministry; site of the Temple of Artemis.", color: "#c9a227" },
+  { year: "AD 93–94", title: "Josephus publishes Jewish Antiquities", desc: "Josephus publishes Jewish Antiquities in Rome.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#2980b9" },
+  { year: "AD 94", title: "Domitian exiles philosophers", desc: "Domitian exiles philosophers from Rome.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#7f8c8d" },
+  { year: "AD 95", title: "Clement writes Letter to the Corinthians", desc: "Clement, a leader in the Roman church, writes his Letter to the Corinthians appealing for peace.", ref: "1 Clement", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#c9a227" },
+  { year: "AD 95–96", title: "John writes Revelation on Patmos", desc: "Exiled by Domitian to Patmos, John writes Revelation.", ref: "Rev 1:9", lat: 37.3089, lng: 26.5430, historical: "Patmos", modern: "Patmos, Greece", note: "John wrote Revelation while exiled here.", color: "#8e44ad" },
+  { year: "AD 96–98", title: "Nerva ends official persecution", desc: "Nerva, the first of five “good” emperors, ends official persecution.", ref: "", lat: 41.9028, lng: 12.4964, historical: "Rome", modern: "Rome, Italy", note: "Peter and Paul martyred here under Nero; center of the early Roman church.", color: "#27ae60" }
+];
+
+// Map initialization with English labels
+const map = L.map('map').setView([32.0, 35.0], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 18
+}).addTo(map);
+
+let markers = [];
+
+function getBibleLink(ref) {
+  if (!ref) return '';
+  let clean = ref.trim().replace(/[–—]/g, '-'); // normalize dashes
+  
+  // Map common abbreviations / full names to BLB short codes
+  const abbrMap = {
+    'matthew': 'mat', 'matt': 'mat', 'mat': 'mat',
+    'mark': 'mar', 'mar': 'mar',
+    'luke': 'luk', 'luk': 'luk',
+    'john': 'jhn', 'jhn': 'jhn',
+    'acts': 'act', 'act': 'act',
+    'romans': 'rom', 'rom': 'rom',
+    '1 corinthians': '1co', '1 cor': '1co', '1co': '1co',
+    '2 corinthians': '2co', '2 cor': '2co', '2co': '2co',
+    'galatians': 'gal', 'gal': 'gal',
+    'ephesians': 'eph', 'eph': 'eph',
+    'philippians': 'php', 'phil': 'php', 'php': 'php',
+    'colossians': 'col', 'col': 'col',
+    '1 thessalonians': '1th', '1 thess': '1th', '1th': '1th',
+    '2 thessalonians': '2th', '2 thess': '2th', '2th': '2th',
+    '1 timothy': '1ti', '1 tim': '1ti', '1ti': '1ti',
+    '2 timothy': '2ti', '2 tim': '2ti', '2ti': '2ti',
+    'titus': 'tit', 'tit': 'tit',
+    'philemon': 'phm', 'philem': 'phm', 'phm': 'phm',
+    'hebrews': 'heb', 'heb': 'heb',
+    'james': 'jas', 'jas': 'jas',
+    '1 peter': '1pe', '1 pet': '1pe', '1pe': '1pe',
+    '2 peter': '2pe', '2 pet': '2pe', '2pe': '2pe',
+    '1 john': '1jn', '1 jn': '1jn', '1jn': '1jn',
+    '2 john': '2jn', '2 jn': '2jn', '2jn': '2jn',
+    '3 john': '3jn', '3 jn': '3jn', '3jn': '3jn',
+    'jude': 'jud', 'jud': 'jud',
+    'revelation': 'rev', 'rev': 'rev'
+  };
+
+  // Extract book, chapter, verse
+  const match = clean.match(/^([1-3]?\s*[A-Za-z]+)\s*(\d+)?(?::(\d+))?/);
+  if (!match) {
+    // Fallback to search
+    return `https://www.blueletterbible.org/search/search.cfm?Criteria=${encodeURIComponent(clean)}&t=ESV`;
+  }
+
+  let bookPart = match[1].trim().toLowerCase();
+  let chapter = match[2] || '1';
+  let verse = match[3] || '1';
+
+  // Normalize book part
+  let short = abbrMap[bookPart];
+  if (!short) {
+    // Try without numbers or common variants
+    for (const [key, val] of Object.entries(abbrMap)) {
+      if (bookPart.includes(key) || key.includes(bookPart)) {
+        short = val;
+        break;
+      }
+    }
+  }
+  if (!short) short = bookPart.substring(0, 3); // last resort
+
+  return `https://www.blueletterbible.org/esv/${short}/${chapter}/${verse}/`;
+}
+
+function renderEvents(filter = '') {
+  const timeline = document.getElementById('timeline');
+  timeline.innerHTML = '';
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  const q = filter.toLowerCase();
+  events.forEach(ev => {
+    if (!q || ev.title.toLowerCase().includes(q) || ev.desc.toLowerCase().includes(q) || ev.year.includes(q) || (ev.ref && ev.ref.toLowerCase().includes(q))) {
+      const div = document.createElement('div');
+      div.className = 'event visible';
+      div.innerHTML = `
+        <div class="dot" style="background:${ev.color}" title="Click to focus map"></div>
+        <span class="year">${ev.year}</span>
+        <h3>${ev.title}</h3>
+        <p class="desc">${ev.desc}</p>
+        ${ev.ref ? `<p class="ref">${ev.ref.split(/[;]/).map(r => {
+          const trimmed = r.trim();
+          if (!trimmed) return '';
+          const link = getBibleLink(trimmed);
+          return `<a href="${link}" target="_blank" rel="noopener" class="verse-link">${trimmed}</a>`;
+        }).join(' · ')}</p>` : ''}
+        ${ev.img ? `<img src="${ev.img}" alt="${ev.title}">` : ''}
+      `;
+      div.querySelector('.dot').onclick = (e) => {
+        e.stopPropagation();
+        if (ev.lat) map.setView([ev.lat, ev.lng], 9);
+      };
+      div.onclick = (e) => {
+        if (e.target.tagName !== 'A' && !e.target.classList.contains('ref') && !e.target.classList.contains('dot')) {
+          div.classList.toggle('expanded');
+        }
+      };
+      timeline.appendChild(div);
+
+      if (ev.lat) {
+        const histName = ev.historical || '—';
+        const modernName = ev.modern || '—';
+        const note = ev.note || '';
+        const marker = L.circleMarker([ev.lat, ev.lng], { radius: 8, color: ev.color, fillOpacity: 0.8 })
+          .addTo(map)
+          .bindPopup(`<div style="max-width:220px"><b>${ev.year}</b><br><strong>${ev.title}</strong><hr style="margin:6px 0">
+            <small><strong>Historical name:</strong> ${histName}<br>
+            <strong>Modern name:</strong> ${modernName}</small>
+            ${note ? `<p style="margin:6px 0 0;font-size:0.85em">${note}</p>` : ''}
+          </div>`);
+        markers.push(marker);
+      }
+    }
+  });
+}
+
+document.getElementById('search').addEventListener('input', e => renderEvents(e.target.value));
+function resetFilter() { document.getElementById('search').value = ''; renderEvents(); }
+
+let scale = 1;
+function zoom(factor) {
+  scale *= factor;
+  document.body.style.transform = `scale(${scale})`;
+  document.body.style.transformOrigin = 'top center';
+}
+
+renderEvents();
+</script>
+</body>
+</html>
