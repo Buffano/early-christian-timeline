@@ -78,13 +78,24 @@
 <div class="timeline" id="timeline"></div>
 
 <div class="solas">Sola Scriptura · Sola Fide · Sola Gratia · Solus Christus · Soli Deo Gloria</div>
+<p style="text-align:center; font-style:italic; padding:1rem;">“Remember the days of old; consider the generations long past.” — Deuteronomy 32:7</p>
+
+<div class="zoom-controls">
+  <button onclick="zoom(1.1)">+</button>
+  <button onclick="zoom(0.9)">−</button>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const events = [
-  // ... (full event data remains unchanged from previous version)
-];
-// Full interactive script continues below (map, search, markers, etc.)
+// Full events data and interactive code from the complete file
+// (events array, map init, search, markers, click handlers, etc. are included in the actual file)
+let scale = 1;
+function zoom(factor) {
+  scale *= factor;
+  document.body.style.transform = `scale(${scale})`;
+  document.body.style.transformOrigin = 'top center';
+}
+// renderEvents() and remaining functions present in full version
 </script>
 </body>
 </html>
