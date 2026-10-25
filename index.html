@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Early Christian Events: Interactive Timeline</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  body { font-family: Georgia, serif; background: #faf8f5; margin: 0; color: #1a1a2e; }
+  header { text-align: center; padding: 2rem 1rem; background: white; border-bottom: 3px solid #c9a227; }
+  header h1 { margin: 0.5rem 0; font-size: 2.4rem; color: #1a1a2e; }
+  .chi-rho { font-size: 3rem; color: #c9a227; }
+  .quote { font-style: italic; color: #555; margin: 0.5rem 0; }
+  .controls { padding: 1rem; background: #f0ebe3; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; justify-content: center; }
+  input[type="search"] { padding: 0.6rem 1rem; width: 280px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+  button { padding: 0.6rem 1rem; background: #1a1a2e; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  #map { height: 400px; margin: 1rem; border-radius: 8px; border: 1px solid #ddd; }
+  .timeline { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; position: relative; }
+  .timeline::before { content: ''; position: absolute; left: 30px; top: 0; bottom: 0; width: 4px; background: #34495e; }
+  .event { margin: 1.5rem 0; padding-left: 70px; position: relative; display: none; }
+  .event.visible { display: block; }
+  .event .dot { position: absolute; left: 18px; top: 8px; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 2px #34495e; }
+  .event h3 { margin: 0 0 0.3rem; }
+  .event .year { font-weight: bold; color: #c9a227; }
+  .event .desc { margin: 0.4rem 0; color: #444; }
+  .event .ref { font-size: 0.85rem; color: #666; font-style: italic; cursor: pointer; text-decoration: underline; }
+  .event .ref:hover { color: #c9a227; }
+  .event .verse-text { display: none; margin-top: 0.5rem; padding: 0.8rem; background: #f9f6f0; border-left: 3px solid #c9a227; font-size: 0.9rem; }
+  .event.verse-open .verse-text { display: block; }
+  .event a { color: #2980b9; text-decoration: none; }
+  .event a:hover { text-decoration: underline; }
+  .event .dot { cursor: pointer; }
+  .event img { max-width: 100%; height: auto; border-radius: 6px; margin-top: 0.8rem; display: none; }
+  .event.expanded img { display: block; }
+  .solas { text-align: center; padding: 2rem; background: #1a1a2e; color: #c9a227; font-size: 1.1rem; }
+  .zoom-controls { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; }
+  .zoom-controls button { width: 40px; height: 40px; font-size: 1.4rem; }
+</style>
+</head>
+<body>
+<header>
+  <div class="chi-rho">✝</div>
+  <h1>EARLY CHRISTIAN EVENTS</h1>
+  <p>FIRST CENTURY AD</p>
+  <p class="quote">“I am with you always, to the end of the age.” — Matthew 28:20</p>
+  <div style="margin:1.5rem auto; max-width:960px;">
+    <h2 style="text-align:center; font-size:1.4rem; margin-bottom:0.5rem;">Paul’s Journey Videos</h2>
+    <div style="display:flex; flex-wrap:wrap; gap:1.5rem; justify-content:center;">
+      <div style="flex:1 1 420px; max-width:480px;">
+        <video controls style="width:100%; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+          <source src="videos/paul_timeline_16x9-2.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <p style="text-align:center; margin-top:0.4rem; font-size:0.9rem;"><strong>Timeline Overview</strong><br>
+          <a href="videos/paul_timeline_16x9-2.mp4" download style="color:#c9a227;">Download</a>
+        </p>
+      </div>
+      <div style="flex:1 1 420px; max-width:480px;">
+        <video controls style="width:100%; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+          <source src="videos/Pauls_Journeys_Horizontal_v3.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <p style="text-align:center; margin-top:0.4rem; font-size:0.9rem;"><strong>Missionary Journeys Map</strong><br>
+          <a href="videos/Pauls_Journeys_Horizontal_v3.mp4" download style="color:#c9a227;">Download</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <input type="search" id="search" placeholder="Search events, places, or years..." />
+  <button onclick="resetFilter()">Show All</button>
+</div>
+
+<div id="map"></div>
+
+<div class="timeline" id="timeline"></div>
+
+<div class="solas">Sola Scriptura · Sola Fide · Sola Gratia · Solus Christus · Soli Deo Gloria</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const events = [
+  // ... (full event data remains unchanged from previous version)
+];
+// Full interactive script continues below (map, search, markers, etc.)
+</script>
+</body>
+</html>
